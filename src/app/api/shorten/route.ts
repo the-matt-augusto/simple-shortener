@@ -1,12 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { nanoid } from "nanoid";
+import { checkRateLimit } from "@vercel/firewall";
 import dbConnect from "@/lib/mongodb";
 import Url from "@/models/Url";
 
 const SHORT_CODE_LENGTH = 8;
 const MAX_RETRIES = 3;
 
+
 export async function POST(request: NextRequest) {
+  const { rateLimited } = await checkRateLimit('shorten-api', { request });
+  if (rateLimited) {
+    return NextResponse.json(
+      { error: 'Muitas requisições. Tente novamente em instantes.' },
+      { status: 429 }
+    );
+  }
+
   //Parse do body, JSON inválido não pode derrubar a rota
   let body: { url?: string };
   try {
@@ -61,15 +71,15 @@ export async function POST(request: NextRequest) {
         { status: 201 }
       );
     } catch (error: unknown) {
-      // E11000 = colisão de shortCode → tenta com outro código
+      // E11000 = colisão de shortCode: tenta com outro código
       const isDuplicate =
         typeof error === "object" &&
         error !== null &&
         "code" in error &&
         (error as { code: number }).code === 11000;
 
-      if (!isDuplicate) throw error; // erro real → 500 natural
-      // colisão → loop gera outro nanoid
+      if (!isDuplicate) throw error; // erro real: 500 natural
+      // colisão: loop gera outro nanoid
     }
   }
 

@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@vercel/firewall": "^1.2.1",
     "mongoose": "^9.7.3",
     "nanoid": "^5.1.16",
     "next": "16.2.10",
