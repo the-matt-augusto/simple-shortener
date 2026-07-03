@@ -7,7 +7,7 @@ Encurtador de URL full-stack construído com Next.js 15 (App Router), TypeScript
 ![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47A248?logo=mongodb&logoColor=white)
 ![License](https://img.shields.io/badge/license-AGPL--3.0-blue)
 
-> **Demo**: _substitua por sua URL da Vercel após o deploy_
+> **Demo**: https://simple-shortener-nine.vercel.app/
 
 ---
 
@@ -172,12 +172,6 @@ curl -i http://localhost:3000/naoexiste
 ```
 
 > Testes automatizados (Vitest/Playwright) estão no roadmap.
-
----
-
-## Deploy na Vercel
-
-O `.env.local` **não** é versionado, então a Vercel não o enxerga. Cadastre `MONGODB_URI` manualmente em **Settings → Environment Variables** antes de confiar no site: sem isso, a página carrega normalmente, mas qualquer operação que dependa do banco falha (o "banco morto"). Em produção, prefira o formato `mongodb+srv://`, que a Vercel resolve nativamente e que se mantém válido caso o Atlas remaneje o cluster.
 
 ---
 
