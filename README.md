@@ -7,26 +7,26 @@ Encurtador de URL full-stack construído com Next.js 15 (App Router), TypeScript
 ![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47A248?logo=mongodb&logoColor=white)
 ![License](https://img.shields.io/badge/license-AGPL--3.0-blue)
 
-> 🔗 **Demo**: _substitua por sua URL da Vercel após o deploy_
+> **Demo**: _substitua por sua URL da Vercel após o deploy_
 
 ---
 
 ## Funcionalidades
 
-- **Encurtar URL** — valida um link longo e o transforma num código curto de 8 caracteres
-- **Redirect 302** — o código curto redireciona para a URL original preservando analytics
-- **Contagem de cliques** — cada acesso incrementa um contador atômico no banco
-- **Health check** — endpoint de status com ping real ao banco e latência medida
+- **Encurtar URL**: valida um link longo e o transforma num código curto de 8 caracteres
+- **Redirect 302**: o código curto redireciona para a URL original preservando analytics
+- **Contagem de cliques**: cada acesso incrementa um contador atômico no banco
+- **Health check**: endpoint de status com ping real ao banco e latência medida
 
 ---
 
 ## Stack
 
-- **Next.js 15** — App Router e Route Handlers
+- **Next.js 15**: App Router e Route Handlers
 - **TypeScript**
 - **MongoDB Atlas** + **Mongoose**
-- **Tailwind CSS** — interface
-- **nanoid** — geração do código curto
+- **Tailwind CSS**: interface
+- **nanoid**: geração do código curto
 
 ---
 
@@ -64,13 +64,13 @@ Redireciona para a URL original com **HTTP 302** e incrementa `clicks` na mesma 
 
 ### `GET /api/health`
 
-Retorna `200` quando o banco responde ao ping (com a latência medida) e `503` quando está inacessível. Não expõe dados internos — serve para monitores externos.
+Retorna `200` quando o banco responde ao ping (com a latência medida) e `503` quando está inacessível. Não expõe dados internos, serve para monitores externos.
 
 ---
 
 ## Decisões de arquitetura
 
-O que separa este projeto de um encurtador de tutorial é o *porquê* por trás de cada escolha.
+Algumas notas sobre o porquê de certas escolhas técnicas.
 
 ### Conexão serverless: cache em `globalThis`
 
@@ -78,9 +78,9 @@ Ambientes serverless reutilizam containers entre requisições (warm start) e o 
 
 Três detalhes fecham as arestas:
 
-- **Cacheia a `promise`, não só a conexão** — dois requests simultâneos num cold start compartilham a mesma promise em vez de abrir duas conexões (elimina uma race condition).
-- **`bufferCommands: false`** — falha rápida e explícita, em vez de enfileirar queries por 10s mascarando um erro de conexão.
-- **Reset da promise no `catch`** — sem isso, uma promise rejeitada envenenaria todos os requests seguintes do mesmo container.
+- **Cacheia a `promise`, não só a conexão**: dois requests simultâneos num cold start compartilham a mesma promise em vez de abrir duas conexões (elimina uma race condition).
+- **`bufferCommands: false`**: falha rápida e explícita, em vez de enfileirar queries por 10s mascarando um erro de conexão.
+- **Reset da promise no `catch`**: sem isso, uma promise rejeitada envenenaria todos os requests seguintes do mesmo container.
 
 O mesmo princípio protege o registro de models com a guarda `mongoose.models.Url || mongoose.model(...)`: o registro global do Mongoose sobrevive ao hot reload, e re-registrar o model estouraria `OverwriteModelError`.
 
@@ -88,15 +88,15 @@ O mesmo princípio protege o registro de models com a guarda `mongoose.models.Ur
 
 Escolhido em vez de ID incremental, UUID ou `Math.random()`:
 
-- **Incremental** é enumerável — expõe volume e permite varredura sequencial (privacidade).
+- **Incremental** é enumerável: expõe volume e permite varredura sequencial (privacidade).
 - **UUID** é longo demais para uma URL curta.
 - **`Math.random()`** não é criptograficamente seguro.
 
-`nanoid` é URL-safe, resistente a colisão e padrão da indústria. O comprimento (8 caracteres, ~281 trilhões de combinações) fica numa constante nomeada `SHORT_CODE_LENGTH` — é decisão de design, não configuração de ambiente, então vive no código versionado e não numa variável de ambiente.
+`nanoid` é URL-safe, resistente a colisão e padrão da indústria. O comprimento (8 caracteres, ~281 trilhões de combinações) fica numa constante nomeada `SHORT_CODE_LENGTH`: é decisão de design, não configuração de ambiente, então vive no código versionado e não numa variável de ambiente.
 
 ### Validação e segurança de entrada
 
-A URL recebida é validada com o parser nativo `new URL()`, não com regex — regex de URL é notoriamente frágil, e o parser entrega o `protocol` de graça. Sobre ele, uma **allowlist de esquema**: apenas `http` e `https` passam. Isso bloqueia `javascript:`, `file:` e `data:` — sem essa barreira, o redirect se tornaria um vetor de XSS.
+A URL recebida é validada com o parser nativo `new URL()`, não com regex: regex de URL é notoriamente frágil, e o parser entrega o `protocol` de graça. Sobre ele, uma **allowlist de esquema**: apenas `http` e `https` passam. Isso bloqueia `javascript:`, `file:` e `data:`, sem essa barreira o redirect se tornaria um vetor de XSS.
 
 Allowlist em vez de blocklist porque blocklist sempre tem lacunas: ou o valor prova ser o que deve ser, ou não entra.
 
@@ -104,13 +104,13 @@ Allowlist em vez de blocklist porque blocklist sempre tem lacunas: ou o valor pr
 
 O redirect usa **HTTP 302 explícito, nunca 301**. Um 301 é cacheado permanentemente pelo navegador: os cliques seguintes nunca chegariam ao servidor e a contagem morreria. O 302 garante que toda visita passe pelo backend.
 
-A cada acesso, o contador é incrementado com `findOneAndUpdate` + `$inc: { clicks: 1 }` — uma operação atômica no banco. Isso elimina a race condition de cliques simultâneos (que um padrão read-modify-write teria) e resolve tudo em uma única ida ao banco em vez de duas — o que importa em serverless, onde latência de rede conta.
+A cada acesso, o contador é incrementado com `findOneAndUpdate` + `$inc: { clicks: 1 }`, uma operação atômica no banco. Isso elimina a race condition de cliques simultâneos (que um padrão read-modify-write teria) e resolve tudo em uma única ida ao banco em vez de duas, o que importa em serverless, onde latência de rede conta.
 
 ### Contrato HTTP semântico
 
-As respostas usam status codes que significam o que dizem: `201` (criado), `400` (entrada inválida), `404` (código inexistente), `503` (banco indisponível). Colisão de código (erro `E11000` do banco) é o **único** caso que dispara retry — até 3 tentativas de gerar outro código. Qualquer outro erro é relançado, porque mascarar erro de banco com retry esconde bugs.
+As respostas usam status codes que significam o que dizem: `201` (criado), `400` (entrada inválida), `404` (código inexistente), `503` (banco indisponível). Colisão de código (erro `E11000` do banco) é o **único** caso que dispara retry, até 3 tentativas de gerar outro código. Qualquer outro erro é relançado, porque mascarar erro de banco com retry esconde bugs.
 
-A URL de resposta é montada com `request.nextUrl.origin` — zero hardcode de host. O mesmo código funciona em `localhost` e no domínio de produção sem alteração.
+A URL de resposta é montada com `request.nextUrl.origin`, sem hardcode de host. O mesmo código funciona em `localhost` e no domínio de produção sem alteração.
 
 ### Health check honesto
 
@@ -118,7 +118,7 @@ O `/api/health` faz um ping real ao servidor via `admin().ping()`. Um check ing�
 
 ### Fronteira cliente/servidor no frontend
 
-No App Router, todo componente é Server Component por padrão — renderiza no servidor e envia zero JavaScript ao navegador. Apenas o formulário, que precisa de `useState` e handlers de evento, é marcado com `"use client"`. A página permanece Server Component; só a ilha interativa é hidratada no cliente. Isso mantém o bundle enviado ao navegador mínimo.
+No App Router, todo componente é Server Component por padrão: renderiza no servidor e envia zero JavaScript ao navegador. Apenas o formulário, que precisa de `useState` e handlers de evento, é marcado com `"use client"`. A página permanece Server Component; só a ilha interativa é hidratada no cliente. Isso mantém o bundle enviado ao navegador mínimo.
 
 ---
 
@@ -139,7 +139,7 @@ MONGODB_URI=mongodb+srv://usuario:senha@cluster.xxxxx.mongodb.net/nomedobanco?re
 
 | Variável | Obrigatória | Descrição |
 |---|---|---|
-| `MONGODB_URI` | Sim | String de conexão do MongoDB Atlas. **Inclua o nome do banco no path** — sem ele, o Mongoose conecta silenciosamente no banco `test`. |
+| `MONGODB_URI` | Sim | String de conexão do MongoDB Atlas. **Inclua o nome do banco no path**: sem ele, o Mongoose conecta silenciosamente no banco `test`. |
 
 ### Iniciar
 
@@ -177,7 +177,7 @@ curl -i http://localhost:3000/naoexiste
 
 ## Deploy na Vercel
 
-O `.env.local` **não** é versionado, então a Vercel não o enxerga. Cadastre `MONGODB_URI` manualmente em **Settings → Environment Variables** antes de confiar no site — sem isso, a página carrega normalmente, mas qualquer operação que dependa do banco falha (o "banco morto"). Em produção, prefira o formato `mongodb+srv://`, que a Vercel resolve nativamente e que se mantém válido caso o Atlas remaneje o cluster.
+O `.env.local` **não** é versionado, então a Vercel não o enxerga. Cadastre `MONGODB_URI` manualmente em **Settings → Environment Variables** antes de confiar no site: sem isso, a página carrega normalmente, mas qualquer operação que dependa do banco falha (o "banco morto"). Em produção, prefira o formato `mongodb+srv://`, que a Vercel resolve nativamente e que se mantém válido caso o Atlas remaneje o cluster.
 
 ---
 
@@ -192,7 +192,7 @@ O `.env.local` **não** é versionado, então a Vercel não o enxerga. Cadastre 
 
 ## Licença
 
-[AGPL-3.0](LICENSE) — código aberto, mas qualquer uso, **inclusive rodar como serviço web**, exige disponibilizar o código-fonte sob a mesma licença.
+[AGPL-3.0](LICENSE): código aberto, mas qualquer uso, **inclusive rodar como serviço web**, exige disponibilizar o código-fonte sob a mesma licença.
 
 ## Contato
 
