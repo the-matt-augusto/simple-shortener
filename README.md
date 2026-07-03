@@ -175,12 +175,6 @@ curl -i http://localhost:3000/naoexiste
 
 ---
 
-## Deploy na Vercel
-
-O `.env.local` **não** é versionado, então a Vercel não o enxerga. Cadastre `MONGODB_URI` manualmente em **Settings → Environment Variables** antes de confiar no site: sem isso, a página carrega normalmente, mas qualquer operação que dependa do banco falha (o "banco morto"). Em produção, prefira o formato `mongodb+srv://`, que a Vercel resolve nativamente e que se mantém válido caso o Atlas remaneje o cluster.
-
----
-
 ## Roadmap
 
 - Rate limiting no `POST /api/shorten`
