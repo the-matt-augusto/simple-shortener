@@ -7,7 +7,7 @@ Encurtador de URL full-stack construído com Next.js 15 (App Router), TypeScript
 ![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47A248?logo=mongodb&logoColor=white)
 ![License](https://img.shields.io/badge/license-AGPL--3.0-blue)
 
-> **Demo**: _substitua por sua URL da Vercel após o deploy_
+> **Demo**: https://simple-shortener-nine.vercel.app/
 
 ---
 
