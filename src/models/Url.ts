@@ -6,6 +6,7 @@ export interface IUrl extends Document {
   clicks: number;
   createdAt: Date;
   updatedAt: Date;
+  expiresAt?: Date;
 }
 
 const UrlSchema = new Schema<IUrl>(
@@ -25,11 +26,16 @@ const UrlSchema = new Schema<IUrl>(
       type: Number,
       default: 0,
     },
+    expiresAt: { 
+      type: Date 
+    },
   },
   {
     timestamps: true, 
   }
 );
+
+UrlSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 //Reutiliza o model se já registrado, evita OverwriteModelError no hot reload
 const Url: Model<IUrl> =

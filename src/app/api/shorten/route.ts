@@ -5,6 +5,9 @@ import dbConnect from "@/lib/mongodb";
 import Url from "@/models/Url";
 
 const SHORT_CODE_LENGTH = 8;
+const MIN_TTL_SECONDS = 60;                  //1 min
+const MAX_TTL_SECONDS = 60 * 60 * 24 * 30;   //30 dias
+const LINK_TTL_SECONDS = 60 * 15; //15 minutos - Longo o bastante para showcase, curto o bastante para evitar abuso
 const MAX_RETRIES = 3;
 
 
@@ -18,7 +21,7 @@ export async function POST(request: NextRequest) {
   }
 
   //Parse do body, JSON inválido não pode derrubar a rota
-  let body: { url?: string };
+  let body: { url?: string, ttlSeconds?: number };
   try {
     body = await request.json();
   } catch {
@@ -55,18 +58,39 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const ttlSecondsRaw = body?.ttlSeconds;
+  
+  let ttlSeconds = LINK_TTL_SECONDS; //Default quando omitido
+
+  if (ttlSecondsRaw !== undefined) {
+    if (
+      !Number.isInteger(ttlSecondsRaw) ||
+      ttlSecondsRaw < MIN_TTL_SECONDS ||
+      ttlSecondsRaw > MAX_TTL_SECONDS
+    ) {
+      return NextResponse.json(
+        { error: `ttlSeconds deve ser um inteiro entre ${MIN_TTL_SECONDS} e ${MAX_TTL_SECONDS}.` },
+        { status: 400 }
+      );
+    }
+    ttlSeconds = ttlSecondsRaw;
+  }
+
   await dbConnect();
+
+  const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
 
   //Criação com retry em caso de colisão do nanoid
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     const shortCode = nanoid(SHORT_CODE_LENGTH);
     try {
-      const doc = await Url.create({ originalUrl: url, shortCode });
+      const doc = await Url.create({ originalUrl: url, shortCode, expiresAt });
       return NextResponse.json(
         {
           shortCode: doc.shortCode,
           originalUrl: doc.originalUrl,
           shortUrl: `${request.nextUrl.origin}/${doc.shortCode}`,
+          expiresAt,
         },
         { status: 201 }
       );
